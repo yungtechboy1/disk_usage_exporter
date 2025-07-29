@@ -131,6 +131,7 @@ func transformMultipaths(multiPaths map[string]int) map[string]int {
 	for path, level := range multiPaths {
 		l := level
 		paths[filepath.Clean(path)] = l
+		fmt.Println("Cfg loaded", filepath.Clean(path), ":", l)
 	}
 	return paths
 }
