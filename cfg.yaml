@@ -1,0 +1,11 @@
+multi-paths:
+  /homEe: 2
+  /var: 3
+  /tmp: 1
+bind-address: 0.0.0.0:9995
+dir-level: 2
+ignore-dirs:
+  - /proc
+  - /dev
+  - /sys
+  - /run

@@ -2,24 +2,28 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/dundee/disk_usage_exporter/build"
+	"github.com/dundee/disk_usage_exporter/exporter"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
+	homedir "github.com/mitchellh/go-homedir"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
-
-	"github.com/dundee/disk_usage_exporter/build"
-	"github.com/dundee/disk_usage_exporter/exporter"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/spf13/viper"
 )
 
 var (
 	cfgFile string
 )
-
+var conf = koanf.Conf{
+	Delim:       ".",
+	StrictMerge: true,
+}
+var k = koanf.NewWithConf(conf)
 var rootCmd = &cobra.Command{
 	Use:   "disk_usage_exporter",
 	Short: "Prometheus exporter for detailed disk usage info",
@@ -28,7 +32,11 @@ and reporting which directories consume what space.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		printHeader()
 
-		paths := transformMultipaths(viper.GetStringMapString("multi-paths"))
+		//paths := transformMultipaths(viper.GetStringMapString("multi-paths"))
+		if err := k.Load(file.Provider(cfgFile), yaml.Parser()); err != nil {
+			log.Fatalf("error loading config: %v", err)
+		}
+		paths := transformMultipaths(k.IntMap("multi-paths"))
 		if len(paths) == 0 {
 			paths[filepath.Clean(viper.GetString("analyzed-path"))] = viper.GetInt("dir-level")
 		}
@@ -85,6 +93,7 @@ func initConfig() {
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
+
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -117,13 +126,10 @@ func printHeader() {
 	)
 }
 
-func transformMultipaths(multiPaths map[string]string) map[string]int {
+func transformMultipaths(multiPaths map[string]int) map[string]int {
 	paths := make(map[string]int, len(multiPaths))
 	for path, level := range multiPaths {
-		l, err := strconv.Atoi(level)
-		if err != nil {
-			log.Fatalf("Invalid level for path %s: %s", path, level)
-		}
+		l := level
 		paths[filepath.Clean(path)] = l
 	}
 	return paths
